@@ -1,5 +1,9 @@
 import json
-from domain.resourceSpec import Intent, ThresholdPolicy, ResourceSpec
+
+from app.domain.Intent import Intent
+from app.domain.resourceSpec import ResourceSpec
+from app.domain.thresholdPolicy import ThresholdPolicy
+
 
 def load_intent(path: str) -> Intent:
     with open(path, 'r') as f:

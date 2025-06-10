@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from domain.resourceSpec import ResourceSpec
+from app.domain.resourceSpec import ResourceSpec
 
 
 @dataclass

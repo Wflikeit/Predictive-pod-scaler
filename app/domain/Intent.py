@@ -1,11 +1,17 @@
 from dataclasses import dataclass
+from typing import List
+
+from app.domain.thresholdPolicy import ThresholdPolicy
 
 
 @dataclass
 class Intent:
-    thresholds: list[ThresholdPolicy]
+    dy_threshold: float
     slope_threshold: float
-    dy_threshold: int
+    thresholds: List[ThresholdPolicy]
+    margin_up: int = 1
+    margin_down: int = 1
+    cooldown_sec: int = 30
 
 """"
 thresholds": [
