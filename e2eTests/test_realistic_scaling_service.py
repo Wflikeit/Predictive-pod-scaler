@@ -6,7 +6,7 @@ import numpy as np
 from app.domain.Intent import Intent, ThresholdPolicy
 from app.domain.resourceSpec import ResourceSpec
 from app.domain.ueSessionInfo import UeSessionInfo
-from app.service.scaling_decision_service import ScalingDecisionService
+from app.core.scaling_decision_service import ScalingDecisionService
 
 # -----------------------------------------------------------------------------
 # Helpers ---------------------------------------------------------------------

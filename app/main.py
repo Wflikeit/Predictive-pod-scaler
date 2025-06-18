@@ -1,5 +1,5 @@
 from app.domain.intent_loader import load_intent
-from app.service.scaling_decision_service import ScalingDecisionService
+from app.core.scaling_decision_service import ScalingDecisionService
 
 
 def main():
