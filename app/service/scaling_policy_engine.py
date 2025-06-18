@@ -16,6 +16,7 @@ class TrendResult:
 class ScalingPolicyEngine:
     def __init__(self):
         self.history: List[UeSessionInfo] = []
+        self._weights = [i + 1 for i in range(50)]
 
     def add_sample(self, sample: UeSessionInfo):
         """
@@ -38,16 +39,15 @@ class ScalingPolicyEngine:
             return 0.0
 
         n = len(self.history)
-        weights = [i + 1 for i in range(n)]
         x = list(range(n))
         y = [s.session_count for s in self.history]
 
-        avg_x = sum(w * x_ for w, x_ in zip(weights, x)) / sum(weights)
-        avg_y = sum(w * y_ for w, y_ in zip(weights, y)) / sum(weights)
+        avg_x = sum(w * x_ for w, x_ in zip(self._weights, x)) / sum(self._weights)
+        avg_y = sum(w * y_ for w, y_ in zip(self._weights, y)) / sum(self._weights)
 
         numerator = sum(w * (xi - avg_x) * (yi - avg_y)
-                        for w, xi, yi in zip(weights, x, y))
-        denominator = sum(w * (xi - avg_x) ** 2 for w, xi in zip(weights, x))
+                        for w, xi, yi in zip(self._weights, x, y))
+        denominator = sum(w * (xi - avg_x) ** 2 for w, xi in zip(self._weights, x))
 
         return numerator / denominator if denominator else 0.0
 

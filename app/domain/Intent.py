@@ -9,9 +9,10 @@ class Intent:
     dy_threshold: float
     slope_threshold: float
     thresholds: List[ThresholdPolicy]
-    margin_up: int = 1
+    margin_up: int = 30
     margin_down: int = 1
     cooldown_sec: int = 30
+
 
 """"
 thresholds": [

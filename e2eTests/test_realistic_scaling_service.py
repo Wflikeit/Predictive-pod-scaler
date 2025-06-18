@@ -2,7 +2,6 @@ import random
 from typing import List, Optional
 
 import numpy as np
-import pytest
 
 from app.domain.Intent import Intent, ThresholdPolicy
 from app.domain.resourceSpec import ResourceSpec
@@ -88,6 +87,36 @@ def generate_traffic(duration_min: int) -> List[int]:
     descend = np.clip(series.max() - 0.2 * np.arange(total // 4), 0, None)
     return np.concatenate([series[:half], plateau, descend]).astype(int).tolist()
 
+
+def generate_linear_noise_traffic(duration_min: int) -> List[int]:
+    x = np.arange(0, duration_min * 60, PROBE_INTERVAL_SEC)
+    trend = 0.5 * x / 60  # ok. 0.5 użytkownika na sekundę
+    noise = np.random.normal(0, 2, size=len(x))
+    return np.clip((trend + noise).astype(int), 0, None).tolist()
+
+
+def generate_sine_traffic(duration_min: int) -> List[int]:
+    x = np.arange(0, duration_min * 60, PROBE_INTERVAL_SEC)
+    base = 30 + 10 * np.sin(2 * np.pi * x / 300)
+    noise = np.random.normal(0, 2, size=len(x))
+    return np.clip((base + noise).astype(int), 0, None).tolist()
+
+
+def generate_spikey_traffic(duration_min: int) -> List[int]:
+    base = generate_linear_noise_traffic(duration_min)
+    for i in range(0, len(base), 50):
+        base[i] += random.randint(15, 30)
+    return base
+
+
+def generate_broken_traffic(duration_min: int) -> List[int]:
+    x = np.arange(0, duration_min * 60, PROBE_INTERVAL_SEC)
+    y = np.random.normal(30, 10, size=len(x)).astype(int)
+    y[::40] = 0  # dropout
+    y[::60] += 50  # spike
+    return np.clip(y, 0, None).tolist()
+
+
 def backtest(service: ScalingDecisionService, traffic: List[int], intent: Intent):
     cluster = MockCluster()
     under = over = fit = 0
@@ -116,16 +145,17 @@ def backtest(service: ScalingDecisionService, traffic: List[int], intent: Intent
 # -----------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("seed", [42])
-def test_scaling_with_propagation_delay(seed: int):
+# --- PARAMETRIZED TEST ---
+def _run_test_for_generator(generator_func):
+    seed = 1337
     random.seed(seed)
     np.random.seed(seed)
 
     intent = build_intent_from_config(CONFIG)
-    service_pred = ScalingDecisionService(intent)
-    traffic = generate_traffic(TEST_DURATION_MIN)
+    traffic = generator_func(TEST_DURATION_MIN)
 
-    fit_p, under_p, over_p = backtest(service_pred, traffic, intent)
+    pred = ScalingDecisionService(intent)
+    fit_p, under_p, over_p = backtest(pred, traffic, intent)
 
     class Reactive(ScalingDecisionService):
         def decide(self, s):
@@ -136,11 +166,32 @@ def test_scaling_with_propagation_delay(seed: int):
                     return rule.resources.cpu
             return self.intent.thresholds[-1].resources.cpu
 
-    service_reac = Reactive(intent)
-    fit_r, under_r, over_r = backtest(service_reac, traffic, intent)
+    reac = Reactive(intent)
+    fit_r, under_r, over_r = backtest(reac, traffic, intent)
 
-    print(f"\nPREDICTIVE: fit={fit_p:.2%}, under={under_p:.2%}, over={over_p:.2%}")
+    print(f"\n{generator_func.__name__}")
+    print(f"PREDICTIVE: fit={fit_p:.2%}, under={under_p:.2%}, over={over_p:.2%}")
     print(f"REACTIVE : fit={fit_r:.2%}, under={under_r:.2%}, over={over_r:.2%}")
 
     assert under_p < under_r, f"Prediction did not worse under-provision: {under_p:.2%} vs {under_r:.2%}"
-    assert fit_p >= fit_r, f"Prediciton worsen CPU-fit: {fit_p:.2%} vs {fit_r:.2%}"
+    assert fit_p >= fit_r, f"Prediction worsen CPU-fit: {fit_p:.2%} vs {fit_r:.2%}"
+    assert under_p <= under_r + 0.01
+
+def test_linear_noise():
+    _run_test_for_generator(generate_linear_noise_traffic)
+
+
+def test_sine():
+    _run_test_for_generator(generate_sine_traffic)
+
+
+def test_spikey():
+    _run_test_for_generator(generate_spikey_traffic)
+
+
+def test_broken():
+    _run_test_for_generator(generate_broken_traffic)
+
+
+def test_default():
+    _run_test_for_generator(generate_traffic)
