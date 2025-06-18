@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Deque
 
 from app.domain.trendResult import TrendResult
 from app.domain.trend_analyzer import TrendAnalyzer
@@ -15,19 +15,19 @@ class ExponentialRegressionAnalyzer(TrendAnalyzer):
         for n in range(min_history_length, max_history_length + 1):
             self._weights_cache[n] = self._compute_exp_weights(n)
 
-    def evaluate(self, history: List[UeSessionInfo]) -> TrendResult:
+    def evaluate(self, history: Deque[UeSessionInfo]) -> TrendResult:
         return TrendResult(
             delta=self._analyze_short_term(history),
             slope=self._analyze_trend(history),
             current_sessions=history[-1].session_count if history else 0
         )
 
-    def _analyze_short_term(self, history: List[UeSessionInfo]) -> float:
+    def _analyze_short_term(self, history: Deque[UeSessionInfo]) -> float:
         if len(history) < 2:
             return 0.0
         return history[-1].session_count - history[-2].session_count
 
-    def _analyze_trend(self, history: List[UeSessionInfo]) -> float:
+    def _analyze_trend(self, history: Deque[UeSessionInfo]) -> float:
         if len(history) < self.min_history_length:
             return 0.0
 
