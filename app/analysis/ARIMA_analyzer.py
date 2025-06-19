@@ -27,7 +27,7 @@ sns.set_context("talk")
 fig, ax = plt.subplots()
 
 # Podzielmy na train/test ostatnie 24 miesiące jako walidację
-data_set = (np.sin(np.linspace(0,20*np.pi,20*10, True))+1) * (1+ ((np.random.random(20*10)-0.5)*0.3))
+data_set = (np.sin(np.linspace(0,20*np.pi,20*10, True))+1) * (1+ ((np.random.random(20*10)-0.5)*0.35))
 train = data_set[:-10*10] #df.iloc[:-24]
 test  = data_set[-10*10:] #df.iloc[-24:]
 
@@ -38,7 +38,7 @@ plt.show()
 # Chcemy uchwycić sezonowość – m=12 (miesięczna)
 model_auto = auto_arima(
     train,
-    seasonal=True, m=2*10,
+    seasonal=True, m=4*10,
     trace=True,          # loguj próby
     suppress_warnings=True,
     stepwise=True,
@@ -75,14 +75,14 @@ plt.figure(figsize=(14,5))
 plt.plot(train, label="train")
 plt.plot(test,  label="ground truth (test)", color="black")
 plt.plot(pred_mean, label="forecast", color="royalblue")
-# plt.fill_between(
-#     pred_ci.index,
-#     pred_ci.iloc[:,0],
-#     pred_ci.iloc[:,1],
-#     color="royalblue",
-#     alpha=0.20,
-#     label="95% CI"
-# )
+plt.fill_between(
+    np.arange(0,100,step=1),
+    pred_ci[:,0],
+    pred_ci[:,1],
+    color="royalblue",
+    alpha=0.40,
+    label="95% CI"
+)
 plt.title(f"SARIMA forecast, MAPE={mape:.2f}%")
 plt.legend()
 plt.show()
