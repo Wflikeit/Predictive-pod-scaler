@@ -2,6 +2,7 @@ import random
 import numpy as np
 import pytest
 
+from analysis.ARIMA_analyzer import ARIMAAnalyzer
 from analysis.exponential_analyzer import ExponentialRegressionAnalyzer
 from app.domain.Intent import Intent, ThresholdPolicy
 from app.domain.resourceSpec import ResourceSpec
@@ -20,13 +21,13 @@ CONFIG = {
     "slope_threshold": 0.5,
     "dy_threshold": 1.0,
     "thresholds": [
-        {"min_sessions": 0,    "max_sessions": 50,   "resources": {"cpu": "100m",  "memory": "128Mi"}},
-        {"min_sessions": 51,   "max_sessions": 150,  "resources": {"cpu": "200m",  "memory": "256Mi"}},
-        {"min_sessions": 151,  "max_sessions": 300,  "resources": {"cpu": "300m",  "memory": "384Mi"}},
-        {"min_sessions": 301,  "max_sessions": 500,  "resources": {"cpu": "400m",  "memory": "512Mi"}},
-        {"min_sessions": 501,  "max_sessions": 750,  "resources": {"cpu": "600m",  "memory": "768Mi"}},
-        {"min_sessions": 751,  "max_sessions": 1000, "resources": {"cpu": "800m",  "memory": "1024Mi"}},
-        {"min_sessions": 1001, "max_sessions": 99999,"resources": {"cpu": "1000m", "memory": "1280Mi"}},
+        {"min_sessions": 0, "max_sessions": 50, "resources": {"cpu": "100m", "memory": "128Mi"}},
+        {"min_sessions": 51, "max_sessions": 150, "resources": {"cpu": "200m", "memory": "256Mi"}},
+        {"min_sessions": 151, "max_sessions": 300, "resources": {"cpu": "300m", "memory": "384Mi"}},
+        {"min_sessions": 301, "max_sessions": 500, "resources": {"cpu": "400m", "memory": "512Mi"}},
+        {"min_sessions": 501, "max_sessions": 750, "resources": {"cpu": "600m", "memory": "768Mi"}},
+        {"min_sessions": 751, "max_sessions": 1000, "resources": {"cpu": "800m", "memory": "1024Mi"}},
+        {"min_sessions": 1001, "max_sessions": 99999, "resources": {"cpu": "1000m", "memory": "1280Mi"}},
     ]
 }
 
@@ -129,7 +130,8 @@ def test_realistic_predictive_vs_reactive(alpha: float, max_hist: int):
     pred = ScalingDecisionService(intent)
     reac = Reactive(intent)
     reac.engine = ScalingPolicyEngine(
-        analyzer=ExponentialRegressionAnalyzer(alpha=alpha),
+        analyzer=ARIMAAnalyzer(period=60,
+                               minimal_reaction_time=5),
         max_history=max_hist
     )
 

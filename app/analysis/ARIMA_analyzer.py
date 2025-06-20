@@ -2,6 +2,7 @@
 # 0. Instalacja najnowszych wersji (tylko jeśli to nowy runtime)
 # ─────────────────────────────────────────────────────────────
 # !pip install -U pandas numpy matplotlib seaborn scikit-learn statsmodels pmdarima
+from typing import Sequence
 
 # (W Colab dodaj przed komórką "!" – lokalnie w terminalu bez tego.)
 
@@ -18,6 +19,7 @@ from sklearn.metrics import mean_absolute_percentage_error
 
 from app.domain.trendResult import TrendResult
 from app.domain.ueSessionInfo import UeSessionInfo
+from domain.trend_analyzer import TrendAnalyzer
 
 plt.style.use("seaborn-v0_8-whitegrid")
 sns.set_context("talk")
@@ -63,7 +65,6 @@ sarima = SARIMAX(
 
 print(sarima.summary())
 
-# Prognozujemy dokładnie tyle okresów, ile mamy w teście
 n_periods = len(test)
 forecast = sarima.get_forecast(steps=n_periods)
 pred_mean = forecast.predicted_mean
@@ -116,11 +117,11 @@ class ARIMAAnalyzer(TrendAnalyzer):
                 history
             ),
             seasonal=True, m=self.period * 2,
-            trace=True,  # loguj próby
+            trace=True,
             suppress_warnings=True,
             stepwise=True,
             information_criterion="aic",
-            error_action="ignore"  # pomiń nie-podażne konfiguracje
+            error_action="ignore"
         )
 
     def evaluate(self, history: Sequence[UeSessionInfo], part_of_period: float = 0) -> dict[str, TrendResult]:
