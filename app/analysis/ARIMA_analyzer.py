@@ -74,7 +74,7 @@ class ARIMAAnalyzer(TrendAnalyzer):
         x = np.linspace(0, 20 * np.pi, total_points)
         noise = 1 + ((np.random.random(total_points) - 0.5) * 0.3)
 
-        data_set = ((np.sin(x) + 1) / 2) * 100 * noise  # (sin+1)/2 ∈ [0,1]
+        data_set = ((np.sin(x) + 1) / 2) * 60 * noise  # (sin+1)/2 ∈ [0,1]
 
         for i in range(needed):
             ts = now - timedelta(seconds=(needed - i))

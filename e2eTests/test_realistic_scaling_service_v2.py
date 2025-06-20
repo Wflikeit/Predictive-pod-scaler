@@ -1,13 +1,13 @@
 import random
+
 import numpy as np
 import pytest
 
 from analysis.ARIMA_analyzer import ARIMAAnalyzer
-from analysis.exponential_analyzer import ExponentialRegressionAnalyzer
+from app.core.scaling_decision_service import ScalingDecisionService
 from app.domain.Intent import Intent, ThresholdPolicy
 from app.domain.resourceSpec import ResourceSpec
 from app.domain.ueSessionInfo import UeSessionInfo
-from app.core.scaling_decision_service import ScalingDecisionService
 from core.scaling_policy_engine import ScalingPolicyEngine
 
 # --------------------------------------------------------------------------------

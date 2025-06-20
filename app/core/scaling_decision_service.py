@@ -16,13 +16,13 @@ class ScalingDecisionService:
         intent: Intent,
         underscale_delay_sec: int = 120
     ):
-        period = 12
+        period = 20
         arima = ARIMAAnalyzer(period=period, minimal_reaction_time=5)
 
         # bufor 4× dłuższy od potrzebnego i retrain co pełny okres
         self.engine = ScalingPolicyEngine(
             analyzer=arima,
-            max_history=period * 4,  # 240 > 120  → historia się zmieści
+            max_history=period * 3,  # 240 > 120  → historia się zmieści
             retrain_interval=period  # co 60 nowych próbek pełny retrain
         )
 

@@ -14,10 +14,10 @@ from app.core.scaling_decision_service import ScalingDecisionService
 
 PROBE_INTERVAL_SEC = 5
 APPLY_DELAY_PROBES = 6
-TEST_DURATION_MIN = 6
+TEST_DURATION_MIN = 7
 
-SLOPE_THRESHOLD = 0.1
-DY_THRESHOLD = 1.0
+SLOPE_THRESHOLD = 0.05
+DY_THRESHOLD = 0.5
 CONFIG = {
     "slope_threshold": SLOPE_THRESHOLD,
     "dy_threshold": DY_THRESHOLD,
