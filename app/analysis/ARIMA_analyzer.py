@@ -9,13 +9,15 @@
 # 1. Importy
 # ─────────────────────────────────────────────────────────────
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from pmdarima import auto_arima
 from sklearn.metrics import mean_absolute_percentage_error
+
+from app.domain.trendResult import TrendResult
+from app.domain.ueSessionInfo import UeSessionInfo
 
 plt.style.use("seaborn-v0_8-whitegrid")
 sns.set_context("talk")
@@ -27,9 +29,9 @@ sns.set_context("talk")
 fig, ax = plt.subplots()
 
 # Podzielmy na train/test ostatnie 24 miesiące jako walidację
-data_set = (np.sin(np.linspace(0,20*np.pi,20*10, True))+1) * (1+ ((np.random.random(20*10)-0.5)*0.35))
-train = data_set[:-10*10] #df.iloc[:-24]
-test  = data_set[-10*10:] #df.iloc[-24:]
+data_set = (np.sin(np.linspace(0, 20 * np.pi, 20 * 10, True)) + 1) * (1 + ((np.random.random(20 * 10) - 0.5) * 0.3))
+train = data_set[:-10 * 10]  # df.iloc[:-24]
+test = data_set[-10 * 10:]  # df.iloc[-24:]
 
 ax.plot(data_set)
 plt.show()
@@ -38,8 +40,8 @@ plt.show()
 # Chcemy uchwycić sezonowość – m=12 (miesięczna)
 model_auto = auto_arima(
     train,
-    seasonal=True, m=4*10,
-    trace=True,          # loguj próby
+    seasonal=True, m=4 * 10,
+    trace=True,  # loguj próby
     suppress_warnings=True,
     stepwise=True,
     information_criterion="aic",
@@ -52,7 +54,7 @@ order, sorder = model_auto.order, model_auto.seasonal_order
 print("Wybrane parametry:", order, sorder)
 
 sarima = SARIMAX(
-    train,
+    train + 1,
     order=order,
     seasonal_order=sorder,
     enforce_stationarity=False,
@@ -65,20 +67,20 @@ print(sarima.summary())
 n_periods = len(test)
 forecast = sarima.get_forecast(steps=n_periods)
 pred_mean = forecast.predicted_mean
-pred_ci   = forecast.conf_int()
+pred_ci = forecast.conf_int()
 
 mape = mean_absolute_percentage_error(test, pred_mean) * 100
 print(f"MAPE: {mape:.2f}%")
 
 # ─ Plot ─
-plt.figure(figsize=(14,5))
+plt.figure(figsize=(14, 5))
 plt.plot(train, label="train")
-plt.plot(test,  label="ground truth (test)", color="black")
+plt.plot(test + 1, label="ground truth (test)", color="black")
 plt.plot(pred_mean, label="forecast", color="royalblue")
 plt.fill_between(
-    np.arange(0,100,step=1),
-    pred_ci[:,0],
-    pred_ci[:,1],
+    np.arange(0, 100, step=1),
+    pred_ci[:, 0],
+    pred_ci[:, 1],
     color="royalblue",
     alpha=0.40,
     label="95% CI"
@@ -93,3 +95,41 @@ joblib.dump(sarima, "sarima_airpassengers.joblib")
 # ...
 loaded = joblib.load("sarima_airpassengers.joblib")
 print("Predict from loaded:", loaded.forecast(3))
+
+
+class ARIMAAnalyzer(TrendAnalyzer):
+    def __init__(self, period, minimal_reaction_time=1):
+        self.period = period
+        self.minimal_reaction_time = minimal_reaction_time
+        self.model = None
+
+    def train(self, history: Sequence[UeSessionInfo]) -> None:
+        self.model = auto_arima(
+            history,
+            seasonal=True, m=self.period * 2,
+            trace=True,  # loguj próby
+            suppress_warnings=True,
+            stepwise=True,
+            information_criterion="aic",
+            error_action="ignore"  # pomiń nie-podażne konfiguracje
+        )
+
+    def evaluate(self, history: Sequence[UeSessionInfo], part_of_period: float = 0) -> TrendResult:
+        forecast = SARIMAX(
+            [x['session_count'] for x in history],
+            order=self.model.order,
+            seasonal_order=self.model.seasonal_order,
+            enforce_stationarity=False,
+            enforce_invertibility=False
+        ).fit().get_forecast(steps=self.period * 2)
+
+
+        prediction = {
+            'min': forecast.conf_int()[:, 0],
+            'mean': forecast.predicted_mean,
+            'max': forecast.conf_int()[:, 1]
+        }
+
+        return TrendResult(delta=max(prediction.conf_int()[:, 1]) - history[-1].session_count,
+                           slope=max(prediction.conf_int()[:, 1]) - history[-1].session_count,
+                           current_sessions=prediction.conf_int()[0, 1])

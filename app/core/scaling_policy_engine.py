@@ -7,7 +7,7 @@ from app.domain.ueSessionInfo import UeSessionInfo
 
 
 class ScalingPolicyEngine:
-    def __init__(self, analyzer: TrendAnalyzer, max_history: int = 50):
+    def  __init__(self, analyzer: TrendAnalyzer, max_history: int = 50):
         self.analyzer = analyzer
         self.history: Deque[UeSessionInfo] = deque(maxlen=max_history)
         self.max_history = max_history
