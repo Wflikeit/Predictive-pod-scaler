@@ -114,7 +114,7 @@ class ARIMAAnalyzer(TrendAnalyzer):
             error_action="ignore"  # pomiń nie-podażne konfiguracje
         )
 
-    def evaluate(self, history: Sequence[UeSessionInfo], part_of_period: float = 0) -> TrendResult:
+    def evaluate(self, history: Sequence[UeSessionInfo], part_of_period: float = 0) -> dict[str, TrendResult]:
         forecast = SARIMAX(
             [x['session_count'] for x in history],
             order=self.model.order,
@@ -123,13 +123,19 @@ class ARIMAAnalyzer(TrendAnalyzer):
             enforce_invertibility=False
         ).fit().get_forecast(steps=self.period * 2)
 
-
         prediction = {
-            'min': forecast.conf_int()[:, 0],
-            'mean': forecast.predicted_mean,
-            'max': forecast.conf_int()[:, 1]
+            'min': forecast.conf_int()[np.floor(self.period * part_of_period):np.floor(
+                self.period * part_of_period) + self.minimal_reaction_time, 0],
+            'mean': forecast.predicted_mean[np.floor(self.period * part_of_period):np.floor(
+                self.period * part_of_period) + self.minimal_reaction_time],
+            'max': forecast.conf_int()[np.floor(self.period * part_of_period):np.floor(
+                self.period * part_of_period) + self.minimal_reaction_time, 1]
         }
 
-        return TrendResult(delta=max(prediction.conf_int()[:, 1]) - history[-1].session_count,
-                           slope=max(prediction.conf_int()[:, 1]) - history[-1].session_count,
-                           current_sessions=prediction.conf_int()[0, 1])
+        return {'min': TrendResult(delta=max(prediction['min']) - history[-1].session_count,
+                                   slope=max(prediction['min']) - history[-1].session_count,
+                                   current_sessions=prediction['min'][0]),
+                'max': TrendResult(delta=max(prediction['max']) - history[-1].session_count,
+                                   slope=max(prediction['max']) - history[-1].session_count,
+                                   current_sessions=prediction['max'])
+                }
