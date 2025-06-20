@@ -21,90 +21,15 @@ from app.domain.trendResult import TrendResult
 from app.domain.ueSessionInfo import UeSessionInfo
 from domain.trend_analyzer import TrendAnalyzer
 
-plt.style.use("seaborn-v0_8-whitegrid")
-sns.set_context("talk")
-
-# ─────────────────────────────────────────────────────────────
-# 2. Przygotowanie danych
-# ─────────────────────────────────────────────────────────────
-
-fig, ax = plt.subplots()
-
-# Podzielmy na train/test ostatnie 24 miesiące jako walidację
-data_set = (np.sin(np.linspace(0, 20 * np.pi, 20 * 10, True)) + 1) * (1 + ((np.random.random(20 * 10) - 0.5) * 0.3))
-train = data_set[:-10 * 10]  # df.iloc[:-24]
-test = data_set[-10 * 10:]  # df.iloc[-24:]
-
-ax.plot(data_set)
-plt.show()
-
-# Szukanie najlepszego (p,d,q)(P,D,Q)m wg AIC
-# Chcemy uchwycić sezonowość – m=12 (miesięczna)
-model_auto = auto_arima(
-    train,
-    seasonal=True, m=4 * 10,
-    trace=True,  # loguj próby
-    suppress_warnings=True,
-    stepwise=True,
-    information_criterion="aic",
-    error_action="ignore"  # pomiń nie-podażne konfiguracje
-)
-
-print(model_auto.summary())
-
-order, sorder = model_auto.order, model_auto.seasonal_order
-print("Wybrane parametry:", order, sorder)
-
-sarima = SARIMAX(
-    train + 1,
-    order=order,
-    seasonal_order=sorder,
-    enforce_stationarity=False,
-    enforce_invertibility=False
-).fit()
-
-print(sarima.summary())
-
-n_periods = len(test)
-forecast = sarima.get_forecast(steps=n_periods)
-pred_mean = forecast.predicted_mean
-pred_ci = forecast.conf_int()
-
-mape = mean_absolute_percentage_error(test, pred_mean) * 100
-print(f"MAPE: {mape:.2f}%")
-
-# ─ Plot ─
-plt.figure(figsize=(14, 5))
-plt.plot(train, label="train")
-plt.plot(test + 1, label="ground truth (test)", color="black")
-plt.plot(pred_mean, label="forecast", color="royalblue")
-plt.fill_between(
-    np.arange(0, 100, step=1),
-    pred_ci[:, 0],
-    pred_ci[:, 1],
-    color="royalblue",
-    alpha=0.40,
-    label="95% CI"
-)
-plt.title(f"SARIMA forecast, MAPE={mape:.2f}%")
-plt.legend()
-plt.show()
-
-import joblib
-
-joblib.dump(sarima, "sarima_airpassengers.joblib")
-# ...
-loaded = joblib.load("sarima_airpassengers.joblib")
-print("Predict from loaded:", loaded.forecast(3))
-
 
 class ARIMAAnalyzer(TrendAnalyzer):
-    def __init__(self, period, minimal_reaction_time=1):
+    def __init__(self, period, minimal_reaction_time=1, sample_data: Sequence[UeSessionInfo] | None = None):
         self.period = period
         self.minimal_reaction_time = minimal_reaction_time
         self.model = None
+        self.train(sample_data)
 
-    def train(self, history: Sequence[UeSessionInfo]) -> None:
+    def train(self, history: Sequence[UeSessionInfo] | None) -> None:
         history = np.array([x['session_count'] for x in history])
         self.model = auto_arima(
             history if len(history) > self.period * 2 else
@@ -149,3 +74,81 @@ class ARIMAAnalyzer(TrendAnalyzer):
                                    slope=max(prediction['max']) - history[-1].session_count,
                                    current_sessions=prediction['max'])
                 }
+
+
+if __name__ == "__main__":
+    plt.style.use("seaborn-v0_8-whitegrid")
+    sns.set_context("talk")
+
+    # ─────────────────────────────────────────────────────────────
+    # 2. Przygotowanie danych
+    # ─────────────────────────────────────────────────────────────
+
+    fig, ax = plt.subplots()
+
+    # Podzielmy na train/test ostatnie 24 miesiące jako walidację
+    data_set = (np.sin(np.linspace(0, 20 * np.pi, 20 * 10, True)) + 1) * (1 + ((np.random.random(20 * 10) - 0.5) * 0.3))
+    train = data_set[:-10 * 10]  # df.iloc[:-24]
+    test = data_set[-10 * 10:]  # df.iloc[-24:]
+
+    ax.plot(data_set)
+    plt.show()
+
+    # Szukanie najlepszego (p,d,q)(P,D,Q)m wg AIC
+    # Chcemy uchwycić sezonowość – m=12 (miesięczna)
+    model_auto = auto_arima(
+        train,
+        seasonal=True, m=4 * 10,
+        trace=True,  # loguj próby
+        suppress_warnings=True,
+        stepwise=True,
+        information_criterion="aic",
+        error_action="ignore"  # pomiń nie-podażne konfiguracje
+    )
+
+    print(model_auto.summary())
+
+    order, sorder = model_auto.order, model_auto.seasonal_order
+    print("Wybrane parametry:", order, sorder)
+
+    sarima = SARIMAX(
+        train + 1,
+        order=order,
+        seasonal_order=sorder,
+        enforce_stationarity=False,
+        enforce_invertibility=False
+    ).fit()
+
+    print(sarima.summary())
+
+    n_periods = len(test)
+    forecast = sarima.get_forecast(steps=n_periods)
+    pred_mean = forecast.predicted_mean
+    pred_ci = forecast.conf_int()
+
+    mape = mean_absolute_percentage_error(test, pred_mean) * 100
+    print(f"MAPE: {mape:.2f}%")
+
+    # ─ Plot ─
+    plt.figure(figsize=(14, 5))
+    plt.plot(train, label="train")
+    plt.plot(test + 1, label="ground truth (test)", color="black")
+    plt.plot(pred_mean, label="forecast", color="royalblue")
+    plt.fill_between(
+        np.arange(0, 100, step=1),
+        pred_ci[:, 0],
+        pred_ci[:, 1],
+        color="royalblue",
+        alpha=0.40,
+        label="95% CI"
+    )
+    plt.title(f"SARIMA forecast, MAPE={mape:.2f}%")
+    plt.legend()
+    plt.show()
+
+    import joblib
+
+    joblib.dump(sarima, "sarima_airpassengers.joblib")
+    # ...
+    loaded = joblib.load("sarima_airpassengers.joblib")
+    print("Predict from loaded:", loaded.forecast(3))
