@@ -130,7 +130,7 @@ def test_realistic_predictive_vs_reactive(alpha: float, max_hist: int):
     pred = ScalingDecisionService(intent)
     reac = Reactive(intent)
     reac.engine = ScalingPolicyEngine(
-        analyzer=ARIMAAnalyzer(period=60,
+        analyzer=ARIMAAnalyzer(period=12,
                                minimal_reaction_time=5),
         max_history=max_hist
     )

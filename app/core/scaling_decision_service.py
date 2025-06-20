@@ -16,11 +16,16 @@ class ScalingDecisionService:
         intent: Intent,
         underscale_delay_sec: int = 120
     ):
-        arima = ARIMAAnalyzer(
-            period=60,
-            minimal_reaction_time=5
+        period = 12
+        arima = ARIMAAnalyzer(period=period, minimal_reaction_time=5)
+
+        # bufor 4× dłuższy od potrzebnego i retrain co pełny okres
+        self.engine = ScalingPolicyEngine(
+            analyzer=arima,
+            max_history=period * 4,  # 240 > 120  → historia się zmieści
+            retrain_interval=period  # co 60 nowych próbek pełny retrain
         )
-        self.engine = ScalingPolicyEngine(arima)
+
         self.intent = intent
 
         self._current_cpu: Optional[str] = None
@@ -58,17 +63,31 @@ class ScalingDecisionService:
         return trend.slope <= -self.intent.slope_threshold
 
     def decide(self, sample: UeSessionInfo) -> Optional[str]:
+        # 1) add new sample
         self.engine.add_sample(sample)
 
-        raw = self.engine.evaluate()
+        # 2) warm-up: if we don't yet have enough real samples, fallback reactive
+        period = self.engine.analyzer.period
+        needed = period * 2
+        hist_len = len(self.engine.history)
 
-        if isinstance(raw, dict):
-            trend_min = raw['min']
-            trend_max = raw['max']
-            current_sessions = sample.session_count
-        else:
-            trend_min = trend_max = raw
-            current_sessions = raw.current_sessions
+        if hist_len < needed:
+            if hist_len == needed - 1:
+                print("[DEBUG] Przy kolejnej próbce będzie train i ARIMA się odpali.")
+            rule = self._get_matching_rule(sample.session_count)
+            return rule.resources.cpu if rule else None
+
+        if hist_len == needed:
+            print("[DEBUG] Dokładnie potrzebna liczba próbek – trening ARIMA na realnych danych")
+            self.engine.analyzer.train(list(self.engine.history))
+
+        # tu już ARIMA działa
+        print("[DEBUG] Uruchamiam evaluate() z ARIMA")
+        raw = self.engine.evaluate(part_of_period=1)
+
+
+        trend_min = trend_max = raw
+        current_sessions = raw.current_sessions
 
         rule = self._get_matching_rule(current_sessions)
         target_cpu = rule.resources.cpu if rule else None

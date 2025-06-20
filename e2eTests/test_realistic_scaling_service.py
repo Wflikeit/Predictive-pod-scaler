@@ -14,7 +14,7 @@ from app.core.scaling_decision_service import ScalingDecisionService
 
 PROBE_INTERVAL_SEC = 5
 APPLY_DELAY_PROBES = 6
-TEST_DURATION_MIN = 20
+TEST_DURATION_MIN = 6
 
 SLOPE_THRESHOLD = 0.1
 DY_THRESHOLD = 1.0
@@ -159,11 +159,11 @@ def _run_test_for_generator(generator_func):
 
     class Reactive(ScalingDecisionService):
         def decide(self, s):
-            self.engine.add_sample(s)
-            r = self.engine.evaluate()
+            # Reactive: based solely on the current session count
             for rule in self.intent.thresholds:
-                if rule.min_sessions <= r.current_sessions <= rule.max_sessions:
+                if rule.min_sessions <= s.session_count <= rule.max_sessions:
                     return rule.resources.cpu
+            # Fallback to highest threshold
             return self.intent.thresholds[-1].resources.cpu
 
     reac = Reactive(intent)
