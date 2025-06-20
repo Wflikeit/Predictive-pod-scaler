@@ -49,7 +49,7 @@ class ARIMAAnalyzer(TrendAnalyzer):
             error_action="ignore"
         )
 
-    def evaluate(self, history: Sequence[UeSessionInfo], part_of_period: float = 0) -> TrendResult:
+    def evaluate(self, history: Sequence[UeSessionInfo]) -> TrendResult:
         forecast = SARIMAX(
             np.array([x['session_count'] for x in history]),
             order=self.model.order,
@@ -59,12 +59,9 @@ class ARIMAAnalyzer(TrendAnalyzer):
         ).fit().get_forecast(steps=self.period * 2)
 
         prediction = {
-            'min': forecast.conf_int()[np.floor(self.period * part_of_period):np.floor(
-                self.period * part_of_period) + self.minimal_reaction_time, 0],
-            'mean': forecast.predicted_mean[np.floor(self.period * part_of_period):np.floor(
-                self.period * part_of_period) + self.minimal_reaction_time],
-            'max': forecast.conf_int()[np.floor(self.period * part_of_period):np.floor(
-                self.period * part_of_period) + self.minimal_reaction_time, 1]
+            'min': forecast.conf_int(),
+            'mean': forecast.predicted_mean,
+            'max': forecast.conf_int()
         }
 
         return TrendResult(delta=max(prediction['max']) - history[-1].session_count,
