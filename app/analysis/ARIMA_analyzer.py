@@ -104,8 +104,17 @@ class ARIMAAnalyzer(TrendAnalyzer):
         self.model = None
 
     def train(self, history: Sequence[UeSessionInfo]) -> None:
+        history = np.array([x['session_count'] for x in history])
         self.model = auto_arima(
-            history,
+            history if len(history) > self.period * 2 else
+            np.concatenate(
+                np.random.randint(
+                    low=history.min(),
+                    high=history.max(),
+                    size=(self.period * 2 - len(history))
+                ),
+                history
+            ),
             seasonal=True, m=self.period * 2,
             trace=True,  # loguj próby
             suppress_warnings=True,
@@ -116,7 +125,7 @@ class ARIMAAnalyzer(TrendAnalyzer):
 
     def evaluate(self, history: Sequence[UeSessionInfo], part_of_period: float = 0) -> dict[str, TrendResult]:
         forecast = SARIMAX(
-            [x['session_count'] for x in history],
+            np.array([x['session_count'] for x in history]),
             order=self.model.order,
             seasonal_order=self.model.seasonal_order,
             enforce_stationarity=False,
