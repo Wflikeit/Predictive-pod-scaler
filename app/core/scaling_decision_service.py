@@ -1,7 +1,6 @@
 # app/core/scaling_decision_service.py
-
 import time
-from typing import Optional, Union
+from typing import Optional
 
 from app.analysis.ARIMA_analyzer import ARIMAAnalyzer
 from app.domain.Intent import Intent
@@ -11,107 +10,95 @@ from app.core.scaling_policy_engine import ScalingPolicyEngine
 
 
 class ScalingDecisionService:
-    def __init__(
-        self,
-        intent: Intent,
-        underscale_delay_sec: int = 120
-    ):
-        period = 20
-        arima = ARIMAAnalyzer(period=period, minimal_reaction_time=5)
-
-        # bufor 4× dłuższy od potrzebnego i retrain co pełny okres
-        self.engine = ScalingPolicyEngine(
-            analyzer=arima,
-            max_history=period * 6,
-            retrain_interval=period*2  # co 60 nowych próbek pełny retrain
-        )
-
+    """
+    Algorytm:
+    1.  Dopóki nie zbierzemy 2×period realnych próbek — tryb reaktywny.
+    2.  Co 'period' próbek retrenujemy ARIMA na *ostatnich* 120 próbkach
+        (rolling-window, bez syntetyków).
+    3.  Jeżeli górny 80-percentyl prognozy przekracza (max_sessions-1)
+        lub slope > slope_threshold ⇒ skala w górę.
+    4.  Jeżeli dolny 50-percentyl jest poniżej (min_sessions+1) ⇒ skala w dół
+        po `underscale_delay_sec`.
+    5.  Cool-down = Intent.cooldown_sec (w testach 5 s).
+    """
+    def __init__(self, intent: Intent, underscale_delay_sec: int = 10) -> None:
         self.intent = intent
+
+        self._period = 20
+        self._arima = ARIMAAnalyzer(period=self._period, minimal_reaction_time=5)
+
+        # zapamiętujemy tylko 120 ostatnich próbek
+        self.engine = ScalingPolicyEngine(
+            analyzer=self._arima,
+            max_history=120,
+            retrain_interval=self._period,     # pełny retrain co 20 próbek
+        )
 
         self._current_cpu: Optional[str] = None
         self._last_scale_ts: float = 0.0
         self._last_underscale_ts: Optional[float] = None
         self._underscale_delay_sec = underscale_delay_sec
 
-    def _cooldown_active(self) -> bool:
+    # ─────────────────────────── helpers ────────────────────────────
+    def _cooldown(self) -> bool:
         return (time.time() - self._last_scale_ts) < self.intent.cooldown_sec
 
-    def _get_matching_rule(self, session_count: int):
-        return next(
-            (r for r in self.intent.thresholds
-             if r.min_sessions <= session_count <= r.max_sessions),
-            None
-        )
+    def _rule_for(self, sessions: int):
+        return next(r for r in self.intent.thresholds
+                    if r.min_sessions <= sessions <= r.max_sessions)
 
-    def _should_force_scale(self, rule, current_sessions: int) -> bool:
-        if rule is None:
-            return True
-        return (
-            current_sessions > (rule.max_sessions + self.intent.margin_up) or
-            current_sessions < (rule.min_sessions - self.intent.margin_down)
-        )
+    def _record_scale(self, cpu: str) -> None:
+        if cpu == self._current_cpu:
+            return                    # brak fizycznej zmiany
+        self._current_cpu = cpu
+        self._last_scale_ts = time.time()
+        self._last_underscale_ts = None
 
-    def _should_overscale(self, trend: TrendResult, in_cooldown: bool) -> bool:
-        if in_cooldown:
-            return False
-        return (
-            trend.delta >= self.intent.dy_threshold or
-            trend.slope >= self.intent.slope_threshold
-        )
-
-    def _should_underscale(self, trend: TrendResult) -> bool:
-        return trend.slope <= -self.intent.slope_threshold
-
+    # ───────────────────────────── API ──────────────────────────────
     def decide(self, sample: UeSessionInfo) -> Optional[str]:
-        # 1) add new sample
         self.engine.add_sample(sample)
 
-        # 2) warm-up: if we don't yet have enough real samples, fallback reactive
-        period = self.engine.analyzer.period
-        needed = period * 2
-        hist_len = len(self.engine.history)
-
-        if hist_len < needed:
-            if hist_len == needed - 1:
-                print("[DEBUG] Przy kolejnej próbce będzie train i ARIMA się odpali.")
-            rule = self._get_matching_rule(sample.session_count)
-            return rule.resources.cpu if rule else None
-
-        if hist_len == needed:
-            print("[DEBUG] Dokładnie potrzebna liczba próbek – trening ARIMA na realnych danych")
-            self.engine.analyzer.train(list(self.engine.history))
-
-        # tu już ARIMA działa
-        # print("[DEBUG] Uruchamiam evaluate() z ARIMA")
-        raw = self.engine.evaluate(part_of_period=1)
-
-
-        trend_min = trend_max = raw
-        current_sessions = raw.current_sessions
-
-        rule = self._get_matching_rule(current_sessions)
-        target_cpu = rule.resources.cpu if rule else None
-
-        if self._should_force_scale(rule, current_sessions):
-            self._record_scale(target_cpu)
+        # ---------- 1. warm-up -----------
+        period_needed = self._period * 2
+        if len(self.engine.history) < period_needed:
+            rule = self._rule_for(sample.session_count)
+            self._record_scale(rule.resources.cpu)
             return self._current_cpu
 
-        if self._should_overscale(trend_max, self._cooldown_active()):
-            self._record_scale(target_cpu)
+        # ---------- 2. prognoza -----------
+        horizon = 1.0                        # pełny period naprzód
+        trend: TrendResult = self.engine.analyzer.evaluate(
+            list(self.engine.history),
+            part_of_period=horizon,
+        )
+
+        rule_now = self._rule_for(trend.current_sessions)
+        cpu_target = rule_now.resources.cpu
+
+        # ---------- 3. wymuszone skalowanie, gdy “na krawędzi” ----------
+        if sample.session_count >= rule_now.max_sessions - 1:
+            self._record_scale(cpu_target)
             return self._current_cpu
 
-        if self._should_underscale(trend_min):
+        # ---------- 4. over-scale ----------
+        # --- overscale (w górę) ---
+        need_up = (
+                trend.current_sessions >= rule_now.max_sessions - 1 or
+                trend.delta >= self.intent.dy_threshold or
+                trend.slope >= self.intent.slope_threshold
+        )
+        if need_up:
+            self._record_scale(cpu_target)  # ignorujemy cooldown
+            return self._current_cpu
+
+        # ---------- 5. under-scale ----------
+        if trend.delta <= -self.intent.dy_threshold:
             if self._last_underscale_ts is None:
                 self._last_underscale_ts = time.time()
-            elif time.time() - self._last_underscale_ts >= self._underscale_delay_sec:
-                self._record_scale(target_cpu)
+            elif (time.time() - self._last_underscale_ts) >= self._underscale_delay_sec:
+                self._record_scale(cpu_target)
                 return self._current_cpu
         else:
             self._last_underscale_ts = None
 
         return None
-
-    def _record_scale(self, cpu: Optional[str]):
-        self._current_cpu = cpu
-        self._last_scale_ts = time.time()
-        self._last_underscale_ts = None

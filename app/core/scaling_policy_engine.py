@@ -27,12 +27,10 @@ class ScalingPolicyEngine:
     def add_sample(self, sample: UeSessionInfo):
         self.history.append(sample)
 
-        # 2) ewentualny pełny retrain co retrain_interval próbek
+        self._since_full_train += 1
         if self.retrain_interval and self._since_full_train >= self.retrain_interval:
             self.analyzer.train(list(self.history))
-            self._since_full_train = 0
-        else:
-            self._since_full_train += 1
+            self._since_full_train = 0  # <-- reset TYLKO gdy faktycznie trenowaliśmy
 
     def evaluate(self, part_of_period: float = 0):
         return self.analyzer.evaluate(list(self.history), part_of_period)

@@ -11,7 +11,7 @@ class Intent:
     thresholds: List[ThresholdPolicy]
     margin_up: int = 3
     margin_down: int = 1
-    cooldown_sec: int = 30
+    cooldown_sec: int = 10
 
 
 """

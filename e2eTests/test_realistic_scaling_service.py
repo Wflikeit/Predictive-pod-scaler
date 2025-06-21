@@ -65,7 +65,7 @@ def build_intent_from_config(cfg: dict) -> Intent:
             )
             for r in cfg["thresholds"]
         ],
-        cooldown_sec=0
+        cooldown_sec=5
     )
 
 
@@ -130,6 +130,70 @@ def generate_realistic_traffic(duration_min: float | int, period_min: float | in
     return (periodic_base * (
             1 + ((np.random.random(periodic_base.shape[0]) - 0.5) * 2 * deviation)) * max_session).astype(
         np.uint).tolist()
+
+def generate_threshold_bounce_traffic(duration_min: int) -> List[int]:
+    """
+    Obciążenie oscyluje dokładnie wokół progów (5, 10, 15, 20 session-ów),
+    co ujawnia ewentualne drgania (flapping) decyzji.
+    """
+    points_per_step = max(1, (duration_min * 60 // PROBE_INTERVAL_SEC) // 20)
+    pattern = [4, 6, 9, 11, 14, 16, 19, 21]              # tuż przy progach
+    traffic = []
+    for v in pattern:
+        traffic.extend([v] * points_per_step)
+    return traffic
+
+
+def generate_burst_then_idle_traffic(duration_min: int) -> List[int]:
+    """
+    Krótki, bardzo wysoki burst (stress test) po którym następuje bezruch.
+    Sprawdza, czy usługa potrafi szybko skalować w górę i – co ważniejsze –
+    w dół.
+    """
+    total = duration_min * 60 // PROBE_INTERVAL_SEC
+    burst_len = max(1, total // 10)
+    idle_len = total - burst_len
+    burst = [random.randint(25, 40) for _ in range(burst_len)]
+    idle = [0] * idle_len
+    return burst + idle
+
+
+def generate_step_ramp_traffic(duration_min: int) -> List[int]:
+    """
+    Ruch rośnie schodkowo (stopniowo), ale każdy stopień trwa na tyle długo,
+    by service mógł „złapać oddech”. Dobry test chłonności cooldown-u.
+    """
+    steps = [3, 8, 13, 18, 23]                           # środek każdego progu
+    points_per_step = max(1, (duration_min * 60 // PROBE_INTERVAL_SEC) //
+                             len(steps))
+    traffic = []
+    for lvl in steps:
+        traffic.extend([lvl] * points_per_step)
+    return traffic
+
+
+def generate_random_walk_traffic(duration_min: int) -> List[int]:
+    """
+    Chaotyczny, ale powoli dryfujący ruch; każda próbka różni się od
+    poprzedniej o -1, 0 lub +1 sesję.
+    """
+    total = duration_min * 60 // PROBE_INTERVAL_SEC
+    walk = [random.randint(0, 5)]
+    for _ in range(1, total):
+        walk.append(max(0, walk[-1] + random.choice([-1, 0, 1])))
+    return walk
+
+
+def generate_exponential_growth_traffic(duration_min: int) -> List[int]:
+    """
+    Szybki wzrost wykładniczy aż do wartości drastycznie przekraczającej
+    najwyższy próg – czy decyzje nadążą?
+    """
+    total = duration_min * 60 // PROBE_INTERVAL_SEC
+    x = np.linspace(0, 4, total)                         # wykładnik
+    series = np.clip(np.exp(x) - 1, 0, 60)              # ogranicz maksimum
+    return series.astype(int).tolist()
+
 
 
 def backtest(service: ScalingDecisionService, traffic: List[int], intent: Intent):
@@ -215,3 +279,22 @@ def test_default():
 
 def test_realistic():
     _run_test_for_generator(generate_realistic_traffic)
+
+def test_threshold_bounce():
+    _run_test_for_generator(generate_threshold_bounce_traffic)
+
+
+def test_burst_then_idle():
+    _run_test_for_generator(generate_burst_then_idle_traffic)
+
+
+def test_step_ramp():
+    _run_test_for_generator(generate_step_ramp_traffic)
+
+
+def test_random_walk():
+    _run_test_for_generator(generate_random_walk_traffic)
+
+
+def test_exponential_growth():
+    _run_test_for_generator(generate_exponential_growth_traffic)
