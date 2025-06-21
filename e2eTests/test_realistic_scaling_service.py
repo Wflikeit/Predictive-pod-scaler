@@ -13,7 +13,7 @@ from app.core.scaling_decision_service import ScalingDecisionService
 # -----------------------------------------------------------------------------
 
 PROBE_INTERVAL_SEC = 5
-APPLY_DELAY_PROBES = 6
+APPLY_DELAY_PROBES = 3
 TEST_DURATION_MIN = 7
 
 SLOPE_THRESHOLD = 0.05
@@ -22,10 +22,11 @@ CONFIG = {
     "slope_threshold": SLOPE_THRESHOLD,
     "dy_threshold": DY_THRESHOLD,
     "thresholds": [
-        {"min_sessions": 0, "max_sessions": 3, "resources": {"cpu": "100m", "memory": "64Mi"}},
-        {"min_sessions": 4, "max_sessions": 7, "resources": {"cpu": "150m", "memory": "64Mi"}},
-        {"min_sessions": 8, "max_sessions": 11, "resources": {"cpu": "200m", "memory": "64Mi"}},
-        {"min_sessions": 12, "max_sessions": 99999, "resources": {"cpu": "250m", "memory": "64Mi"}},
+        {"min_sessions": 0, "max_sessions": 5, "resources": {"cpu": "100m", "memory": "64Mi"}},
+        {"min_sessions": 6, "max_sessions": 10, "resources": {"cpu": "150m", "memory": "64Mi"}},
+        {"min_sessions": 11, "max_sessions": 15, "resources": {"cpu": "200m", "memory": "64Mi"}},
+        {"min_sessions": 16, "max_sessions": 20, "resources": {"cpu": "250m", "memory": "64Mi"}},
+        {"min_sessions": 21, "max_sessions": 99999, "resources": {"cpu": "300m", "memory": "64Mi"}},
     ]
 }
 

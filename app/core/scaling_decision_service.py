@@ -22,8 +22,8 @@ class ScalingDecisionService:
         # bufor 4× dłuższy od potrzebnego i retrain co pełny okres
         self.engine = ScalingPolicyEngine(
             analyzer=arima,
-            max_history=period * 3,  # 240 > 120  → historia się zmieści
-            retrain_interval=period  # co 60 nowych próbek pełny retrain
+            max_history=period * 6,
+            retrain_interval=period*2  # co 60 nowych próbek pełny retrain
         )
 
         self.intent = intent
@@ -82,7 +82,7 @@ class ScalingDecisionService:
             self.engine.analyzer.train(list(self.engine.history))
 
         # tu już ARIMA działa
-        print("[DEBUG] Uruchamiam evaluate() z ARIMA")
+        # print("[DEBUG] Uruchamiam evaluate() z ARIMA")
         raw = self.engine.evaluate(part_of_period=1)
 
 

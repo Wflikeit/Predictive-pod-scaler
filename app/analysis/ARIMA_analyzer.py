@@ -64,7 +64,7 @@ class ARIMAAnalyzer(TrendAnalyzer):
                 information_criterion="aic",
                 error_action="ignore"
             )
-        print(f"[ARIMA] training on {len(history)} points completed")
+        # print(f"[ARIMA] training on {len(history)} points completed")
 
     def _generate_synthetic_data(self, needed: int) -> list[UeSessionInfo]:
         now = datetime.now()
@@ -103,37 +103,22 @@ class ARIMAAnalyzer(TrendAnalyzer):
 
         forecast = sarima.get_forecast(steps=self.period * 2)
         conf_int = forecast.conf_int()
-        predicted = forecast.predicted_mean
+        max_index = int(np.argmax(conf_int[:, 1]))
 
-        start = int(np.floor(self.period * part_of_period))
-        end = start + self.minimal_reaction_time
+        # Wyciągnij pojedyncze wartości z tablic prognoz
+        prediction = {
+            'min': conf_int[max_index, 0],
+            'mean': forecast.predicted_mean[max_index],
+            'max': conf_int[max_index, 1],
+        }
 
-        pred_min = conf_int[start:end, 0]
-        pred_max = conf_int[start:end, 1]
-        pred_mean = predicted[start:end]
-        last = history[-1].session_count
-
-        max_val = np.max(pred_max)
-        delta = max_val - last
-
-
-        try:
-            slope_index_array = np.where(np.isclose(pred_max, max_val))[0]
-            slope_index = int(slope_index_array[0]) if slope_index_array.size > 0 else 1
-            slope = delta / max(slope_index, 1)
-
-        except IndexError:
-            slope = 0.0
-
-        print(f"ARIMA pred_mean: {pred_mean}")
-        print(f"ARIMA pred_max: {pred_max}")
-        print(f"ARIMA pred_min: {pred_min}")
-        print(f"last = {last}, delta = {delta}, slope = {slope}")
+        # Oblicz delta i slope względem ostatniej znanej liczby sesji
+        last_session_count = history[-1].session_count
 
         return TrendResult(
-            delta=delta,
-            slope=slope,
-            current_sessions=pred_mean[0] if len(pred_mean) > 0 else last
+            delta=prediction['max'] - last_session_count,
+            slope=(prediction['max'] - last_session_count) / (max_index + 1),
+            current_sessions=prediction['max']
         )
 
     # if __name__ == "__main__":
