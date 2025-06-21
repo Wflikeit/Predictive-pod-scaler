@@ -14,7 +14,7 @@ class Intent:
     cooldown_sec: int = 30
 
 
-""""
+"""
 thresholds": [
   { "min_sessions": 0, "max_sessions": 4, "resources": {"cpu": "100m", "memory": "64Mi"} },
   { "min_sessions": 5, "max_sessions": 9, "resources": {"cpu": "200m", "memory": "128Mi"} }

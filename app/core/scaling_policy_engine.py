@@ -1,7 +1,7 @@
 from collections import deque
 from typing import Deque
 
-from analysis.ARIMA_analyzer import ARIMAAnalyzer
+from app.analysis.ARIMA_analyzer import ARIMAAnalyzer
 from app.domain.ueSessionInfo import UeSessionInfo
 
 

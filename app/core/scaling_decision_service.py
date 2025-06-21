@@ -3,7 +3,7 @@
 import time
 from typing import Optional, Union
 
-from analysis.ARIMA_analyzer import ARIMAAnalyzer
+from app.analysis.ARIMA_analyzer import ARIMAAnalyzer
 from app.domain.Intent import Intent
 from app.domain.trendResult import TrendResult
 from app.domain.ueSessionInfo import UeSessionInfo

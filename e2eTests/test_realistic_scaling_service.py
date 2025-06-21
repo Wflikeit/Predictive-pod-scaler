@@ -118,6 +118,20 @@ def generate_broken_traffic(duration_min: int) -> List[int]:
     return np.clip(y, 0, None).tolist()
 
 
+def generate_realistic_traffic(duration_min: float | int, period_min: float | int = 1, deviation: float = 0.2,
+                               max_session: int = 50) -> list[int]:
+    in_period_samples = np.floor(period_min * 60 / PROBE_INTERVAL_SEC)
+    periods = duration_min / period_min
+    periodic_base = (np.sin(
+        np.linspace(0, 2 * np.pi * periods, np.uint(np.ceil(in_period_samples * periods)), True)) + 1) / 2
+
+    pass
+
+    return (periodic_base * (
+            1 + ((np.random.random(periodic_base.shape[0]) - 0.5) * 2 * deviation)) * max_session).astype(
+        np.uint).tolist()
+
+
 def backtest(service: ScalingDecisionService, traffic: List[int], intent: Intent):
     cluster = MockCluster()
     under = over = fit = 0
@@ -178,6 +192,7 @@ def _run_test_for_generator(generator_func):
     assert fit_p >= fit_r, f"Prediction worsen CPU-fit: {fit_p:.2%} vs {fit_r:.2%}"
     assert under_p <= under_r + 0.01
 
+
 def test_linear_noise():
     _run_test_for_generator(generate_linear_noise_traffic)
 
@@ -196,3 +211,7 @@ def test_broken():
 
 def test_default():
     _run_test_for_generator(generate_traffic)
+
+
+def test_realistic():
+    _run_test_for_generator(generate_realistic_traffic)
