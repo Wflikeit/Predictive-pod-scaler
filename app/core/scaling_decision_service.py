@@ -49,7 +49,7 @@ class ScalingDecisionService:
 
     def _record_scale(self, cpu: str) -> None:
         if cpu == self._current_cpu:
-            return                    # brak fizycznej zmiany
+            return
         self._current_cpu = cpu
         self._last_scale_ts = time.time()
         self._last_underscale_ts = None

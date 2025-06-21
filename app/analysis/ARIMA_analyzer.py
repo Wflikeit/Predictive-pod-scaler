@@ -47,12 +47,8 @@ class ARIMAAnalyzer(TrendAnalyzer):
                 information_criterion="aic",
                 error_action="ignore"
             )
-        # print(f"[ARIMA] training on {len(history)} points completed")
-
-        # app/analysis/ARIMA_analyzer.py  (tylko ta metoda)
 
 
-    # app/analysis/ARIMA_analyzer.py
     def evaluate(self, history: Sequence[UeSessionInfo],
                  part_of_period: float = 0.5) -> TrendResult:
         if self.model is None:
@@ -60,7 +56,6 @@ class ARIMAAnalyzer(TrendAnalyzer):
 
         y = np.array([x.session_count for x in history])
 
-        # --- SARIMA fit (na aktualnych parametrach modelu) ---
         sarima = SARIMAX(
             y, order=self.model.order, seasonal_order=self.model.seasonal_order,
             enforce_stationarity=False, enforce_invertibility=False
@@ -73,7 +68,6 @@ class ARIMAAnalyzer(TrendAnalyzer):
 
         predicted = mean + 0.5 * (up - mean)
 
-        # ‼ nigdy mniej niż mamy teraz
         predicted = max(predicted, y[-1])
 
         delta = predicted - y[-1]
