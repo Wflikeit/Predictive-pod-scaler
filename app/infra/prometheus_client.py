@@ -6,7 +6,7 @@ from typing import Any, Final
 
 import requests
 
-from domain.ueSessionInfo import UeSessionInfo
+from app.domain.ueSessionInfo import UeSessionInfo
 
 logger = logging.getLogger(__name__)
 
