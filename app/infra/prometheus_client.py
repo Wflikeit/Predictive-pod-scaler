@@ -47,9 +47,9 @@ class PrometheusClient:
             if not result:
                 raise RuntimeError("No session data returned by Prometheus")
 
+            timestamp = result[0]["value"][0]
             value_str = result[0]["value"][1]
             session_count = int(value_str)
-            timestamp = time.time()
             logger.info(f"[{timestamp:.3f}] Fetched {session_count} sessions from Prometheus")
 
             return UeSessionInfo(session_count=session_count, timestamp=timestamp)

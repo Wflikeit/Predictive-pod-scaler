@@ -1,8 +1,9 @@
 import logging
 
 
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 from typing import Sequence
-
 import numpy as np
 from pmdarima.arima import auto_arima
 from statsmodels.tsa.statespace.sarimax import SARIMAX

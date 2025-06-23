@@ -32,7 +32,7 @@ def main():
     )
 
     # --- Main loop ---
-    INTERVAL_SEC = 5  # np. co 5 sekund sprawdzaj sesje
+    INTERVAL_SEC = 15
 
     print("[scaler] Starting scaling loop...")
     try:
