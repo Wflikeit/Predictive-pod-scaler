@@ -8,5 +8,3 @@ class ThresholdPolicy:
     min_sessions: int
     max_sessions: int
     resources: ResourceSpec
-
-
