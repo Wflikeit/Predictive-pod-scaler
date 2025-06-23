@@ -7,8 +7,8 @@ from app.core.scaling_policy_engine import ScalingPolicyEngine
 from app.domain.Intent import Intent
 from app.domain.trendResult import TrendResult
 from app.domain.ueSessionInfo import UeSessionInfo
-from infra.kubernetes_client import KubernetesClient
-from infra.prometheus_client import PrometheusClient
+from app.infra.kubernetes_client import KubernetesClient
+from app.infra.prometheus_client import PrometheusClient
 
 
 class ScalingDecisionService:
