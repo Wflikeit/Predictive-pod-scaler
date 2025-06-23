@@ -7,14 +7,14 @@ from app.domain.ueSessionInfo import UeSessionInfo
 
 class ScalingPolicyEngine:
     def __init__(
-        self,
-        analyzer: ARIMAAnalyzer,
-        max_history: int | None = None,
-        retrain_interval: int | None = None
+            self,
+            analyzer: ARIMAAnalyzer,
+            max_history: int | None = None,
+            retrain_interval: int | None = None
     ):
         period = analyzer.period
         if max_history is None:
-            max_history = period * 4         # bufor 4× longer than min
+            max_history = period * 4  # bufor 4× longer than min
         if retrain_interval is None:
             retrain_interval = period
 
@@ -22,7 +22,6 @@ class ScalingPolicyEngine:
         self.history: Deque[UeSessionInfo] = deque(maxlen=max_history)
         self.retrain_interval = retrain_interval
         self._since_full_train = 0
-
 
     def add_sample(self, sample: UeSessionInfo):
         self.history.append(sample)

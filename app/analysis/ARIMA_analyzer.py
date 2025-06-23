@@ -1,6 +1,5 @@
 import logging
 
-logger = logging.getLogger(__name__)
 
 from typing import Sequence
 
@@ -12,6 +11,7 @@ from app.domain.trendResult import TrendResult
 from app.domain.trend_analyzer import TrendAnalyzer
 from app.domain.ueSessionInfo import UeSessionInfo
 
+logger = logging.getLogger(__name__)
 
 class ARIMAAnalyzer(TrendAnalyzer):
     def __init__(
@@ -47,7 +47,6 @@ class ARIMAAnalyzer(TrendAnalyzer):
                 information_criterion="aic",
                 error_action="ignore"
             )
-
 
     def evaluate(self, history: Sequence[UeSessionInfo],
                  part_of_period: float = 0.5) -> TrendResult:
