@@ -9,7 +9,7 @@ import numpy as np
 DURATION_MINUTES = 40            # Czas trwania eksperymentu
 PERIOD_MINUTES = 10              # Okres sinusoidy
 PROBE_INTERVAL_SEC = 35          # Odstęp między próbami (Prometheus scrape + bufor)
-MAX_SESSIONS = 50                # Maksymalna liczba sesji (count)
+MAX_SESSIONS = 16                # Maksymalna liczba sesji (count)
 DEVIATION = 0.25                 # Odchylenie losowe (np. ±25%)
 
 # Konfiguracja loggera
