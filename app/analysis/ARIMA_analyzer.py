@@ -54,6 +54,7 @@ class ARIMAAnalyzer(TrendAnalyzer):
         if self.model is None:
             raise RuntimeError("Model ARIMA is not trained")
 
+        logger.info(f"Evaluating ARIMA ")
         y = np.array([x.session_count for x in history])
 
         sarima = SARIMAX(

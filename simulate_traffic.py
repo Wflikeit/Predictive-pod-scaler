@@ -1,39 +1,73 @@
 import subprocess
 import time
 import logging
+import numpy as np
 
-# Konfiguracja logowania
+# ========================
+# KONFIGURACJA
+# ========================
+DURATION_MINUTES = 40            # Czas trwania eksperymentu
+PERIOD_MINUTES = 10              # Okres sinusoidy
+PROBE_INTERVAL_SEC = 35          # Odstęp między próbami (Prometheus scrape + bufor)
+MAX_SESSIONS = 50                # Maksymalna liczba sesji (count)
+DEVIATION = 0.25                 # Odchylenie losowe (np. ±25%)
+
+# Konfiguracja loggera
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-# Stałe
-HELM_CMD_BASE = [
+# Podstawowa komenda Helm
+HELM_BASE_COMMAND = [
     "helm", "upgrade", "ueransim-ues-additional", "oci://registry-1.docker.io/gradiant/ueransim-ues",
     "--set", "gnb.hostname=ueransim-gnb",
     "--set", 'initialMSISDN="0000000005"'
 ]
 
-WAIT_SECONDS = 35
-ITERATIONS = 40
-START_COUNT = 16
+# ========================
+# GENERATOR RUCHU
+# ========================
+def generate_realistic_traffic(duration_min, period_min=1, deviation=0.2, max_session=50):
+    steps = int(duration_min * 60 / PROBE_INTERVAL_SEC)
+    total_periods = duration_min / period_min
 
-def run_simulation():
-    for i in range(ITERATIONS):
-        current_count = START_COUNT + i
-        full_cmd = HELM_CMD_BASE + ["--set", f"count={current_count}"]
+    # Sinusoida 0-1 (pełne cykle)
+    base = (np.sin(np.linspace(0, 2 * np.pi * total_periods, steps)) + 1) / 2
 
-        logging.info(f"Running Helm upgrade with count={current_count}")
+    # Dodaj losowy jitter ±deviation
+    noise = (np.random.rand(steps) - 0.5) * 2 * deviation
+    signal = np.clip((base * (1 + noise)) * max_session, 0, max_session)
+
+    return np.round(signal).astype(int).tolist()
+
+# ========================
+# WYKONANIE SYMULACJI
+# ========================
+def run_simulation(session_counts):
+    for i, count in enumerate(session_counts):
+        cmd = HELM_BASE_COMMAND + ["--set", f"count={count}"]
+        logging.info(f"[{i + 1}/{len(session_counts)}] Helm upgrade with count={count}")
+
         try:
-            subprocess.run(full_cmd, check=True)
-            logging.info(f"Successfully applied count={current_count}")
+            subprocess.run(cmd, check=True)
+            logging.info("✔️  Update successful")
         except subprocess.CalledProcessError as e:
-            logging.error(f"Helm command failed with count={current_count}: {e}")
+            logging.error(f"❌ Helm command failed: {e}")
 
-        if i < ITERATIONS - 1:
-            logging.info(f"Waiting {WAIT_SECONDS} seconds before next iteration...")
-            time.sleep(WAIT_SECONDS)
+        if i < len(session_counts) - 1:
+            time.sleep(PROBE_INTERVAL_SEC)
 
+# ========================
+# ENTRYPOINT
+# ========================
 if __name__ == "__main__":
-    run_simulation()
+    logging.info("🔄 Generating realistic traffic pattern...")
+    pattern = generate_realistic_traffic(
+        duration_min=DURATION_MINUTES,
+        period_min=PERIOD_MINUTES,
+        deviation=DEVIATION,
+        max_session=MAX_SESSIONS
+    )
+    logging.info(f"✅ Generated {len(pattern)} steps of session counts")
+    run_simulation(pattern)
