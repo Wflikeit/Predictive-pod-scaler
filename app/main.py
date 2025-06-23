@@ -4,6 +4,12 @@ from app.domain.intent_loader import load_intent
 from app.infra.kubernetes_client import KubernetesClient
 from app.infra.prometheus_client import PrometheusClient
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 def main():
     # --- Infrastructure ---

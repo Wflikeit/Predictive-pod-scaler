@@ -112,7 +112,7 @@ class ScalingDecisionService:
             )
             self._record_scale(cpu_target)
             self.scaler.scale_cpu_if_needed(
-                pod_label="open5gs-amf-57c6c6c65b-gzcs8",
+                pod_label="app.kubernetes.io/name=upf",
                 container="open5gs-upf",
                 cpu_target_millicores=int(cpu_target.replace("m", ""))
             )
