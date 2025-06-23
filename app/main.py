@@ -19,7 +19,7 @@ def main():
     print(prometheus.get_metric())
 
     # --- Application input (intent) ---
-    intent = load_intent("../intent.json")
+    intent = load_intent("intent.json")
 
     # --- Application service ---
     decision_service = ScalingDecisionService(
