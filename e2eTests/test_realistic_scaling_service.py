@@ -200,7 +200,7 @@ def backtest(service: ScalingDecisionService, traffic: List[int], intent: Intent
     cluster = MockCluster()
     under = over = fit = 0
     for sess in traffic:
-        cpu = service.decide(UeSessionInfo(0, sess))
+        cpu = service._determine_target_cpu(UeSessionInfo(0, sess))
         if cpu:
             cluster.apply_cpu(cpu)
         cluster.tick()

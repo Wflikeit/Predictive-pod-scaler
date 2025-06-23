@@ -1,3 +1,4 @@
+import time
 from app.core.scaling_decision_service import ScalingDecisionService
 from app.domain.intent_loader import load_intent
 from app.infra.kubernetes_client import KubernetesClient
@@ -5,31 +6,35 @@ from app.infra.prometheus_client import PrometheusClient
 
 
 def main():
-    # --- Infrastructure adapters (np. bramki) ---
+    # --- Infrastructure ---
     scaler = KubernetesClient()
-
-    print(scaler.test_connection())
-
     prometheus = PrometheusClient(
         base_url="http://192.168.1.20:9090",
         metric="amf_session",
         namespace="default",
         service="open5gs-amf-metrics",
     )
-    print(prometheus.get_metric())
 
-    # --- Application input (intent) ---
+    # --- Load Intent ---
     intent = load_intent("intent.json")
 
-    # --- Application service ---
+    # --- Initialize service ---
     decision_service = ScalingDecisionService(
         intent=intent,
         metrics_client=prometheus,
         scaler=scaler
     )
 
-    # --- Core orchestration ---
-    # decision_service.apply_scaling_if_needed()
+    # --- Main loop ---
+    INTERVAL_SEC = 5  # np. co 5 sekund sprawdzaj sesje
+
+    print("[scaler] Starting scaling loop...")
+    try:
+        while True:
+            decision_service.apply_scaling_if_needed()
+            time.sleep(INTERVAL_SEC)
+    except KeyboardInterrupt:
+        print("\n[scaler] Exiting on Ctrl+C")
 
 
 if __name__ == "__main__":

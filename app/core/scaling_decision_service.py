@@ -1,4 +1,5 @@
 # app/core/scaling_decision_service.py
+import logging
 import time
 from typing import Optional
 
@@ -9,6 +10,8 @@ from app.domain.trendResult import TrendResult
 from app.domain.ueSessionInfo import UeSessionInfo
 from app.infra.kubernetes_client import KubernetesClient
 from app.infra.prometheus_client import PrometheusClient
+
+logger = logging.getLogger(__name__)
 
 
 class ScalingDecisionService:
@@ -96,15 +99,20 @@ class ScalingDecisionService:
             self._last_underscale_ts = None
 
         return None
-    #
-    # def apply_scaling_if_needed(self):
-    #     sample = self.metrics_client.fetch_sessions()
-    #     cpu_target = self._determine_target_cpu(sample)
-    #
-    #     if cpu_target and cpu_target != self._current_cpu:
-    #         self._record_scale(cpu_target)
-    #         self.scaler.scale_cpu_if_needed(
-    #             pod_label=self.intent.pod_label,
-    #             container=self.intent.container,
-    #             cpu_target_millicores=int(cpu_target.replace("m", ""))
-    #         )
+
+    def apply_scaling_if_needed(self):
+        sample = self.metrics_client.fetch_sessions()
+        cpu_target = self._determine_target_cpu(sample)
+
+        if cpu_target and not self._cooldown() and cpu_target != self._current_cpu:
+            logger.info(
+                f"[{sample.timestamp:.3f}] Scaling triggered: "
+                f"session_count={sample.session_count}, "
+                f"target_cpu={cpu_target}, previous_cpu={self._current_cpu}"
+            )
+            self._record_scale(cpu_target)
+            self.scaler.scale_cpu_if_needed(
+                pod_label="open5gs-amf-57c6c6c65b-gzcs8",
+                container="open5gs-upf",
+                cpu_target_millicores=int(cpu_target.replace("m", ""))
+            )
