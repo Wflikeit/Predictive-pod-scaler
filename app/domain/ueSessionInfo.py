@@ -4,5 +4,5 @@ from datetime import time
 
 @dataclass
 class UeSessionInfo:
-    timestamp: float = time.t
+    timestamp: float
     session_count: int
