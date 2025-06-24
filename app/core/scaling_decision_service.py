@@ -65,7 +65,7 @@ class ScalingDecisionService:
     def _determine_target_cpu(self, sample: UeSessionInfo) -> Optional[str]:
         self.engine.add_sample(sample)
 
-        if len(self.engine.history) < 2 * self._period:
+        if len(self.engine.history) < 3 * self._period:
             # warm-up: tryb reaktywny
             rule = self._rule_for(sample.session_count)
             return rule.resources.cpu

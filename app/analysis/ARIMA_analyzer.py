@@ -32,6 +32,10 @@ class ARIMAAnalyzer(TrendAnalyzer):
                 seasonal=True,
                 m=self.period * 2,
                 trace=False,
+                max_p=3,
+                max_q=3,
+                max_P=1,
+                max_Q=1,
                 suppress_warnings=True,
                 stepwise=True,
                 information_criterion="aic",
@@ -67,7 +71,7 @@ class ARIMAAnalyzer(TrendAnalyzer):
         mean = fc.predicted_mean[-1]
         low, up = fc.conf_int(alpha=0.10)[-1]  # 90 % CI
 
-        predicted = mean + 0.5 * (up - mean)
+        predicted = mean + 0.45 * (up - mean)
 
         predicted = max(predicted, y[-1])
 
