@@ -104,7 +104,7 @@ class ScalingDecisionService:
         sample = self.metrics_client.fetch_sessions()
         cpu_target = self._determine_target_cpu(sample)
 
-        if cpu_target and not self._cooldown() and cpu_target != self._current_cpu:
+        if cpu_target and cpu_target != self._current_cpu:
             logger.info(
                 f"[{sample.timestamp:.3f}] Scaling triggered: "
                 f"session_count={sample.session_count}, "
