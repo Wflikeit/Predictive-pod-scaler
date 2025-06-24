@@ -28,7 +28,7 @@ class ScalingDecisionService:
     """
 
     def __init__(self, intent: Intent, metrics_client: PrometheusClient, scaler: KubernetesClient,
-                 underscale_delay_sec: int = 10) -> None:
+                 underscale_delay_sec: int = 5) -> None:
         self.metrics_client: PrometheusClient = metrics_client
         self.scaler: KubernetesClient = scaler
         self.intent: Intent = intent
